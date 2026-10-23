@@ -1,0 +1,44 @@
+{
+  "name": "rex-orbit",
+  "version": "0.1.0",
+  "description": "Your Claude Code sessions in Rex as little 3D pixel bots orbiting on a green LCD, drawn with the Kitty graphics protocol.",
+  "type": "module",
+  "bin": {
+    "rex-orbit": "bin/rex-orbit.mjs"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "start": "node bin/rex-orbit.mjs",
+    "test": "node --test test/*.test.mjs",
+    "golden": "node test/support/record-golden.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "claude-code",
+    "rex",
+    "terminal",
+    "kitty-graphics",
+    "pixel-art",
+    "dithering",
+    "bayer",
+    "lcd",
+    "cli",
+    "agents",
+    "dashboard"
+  ],
+  "author": "benhid",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/benhid/rex-orbit.git"
+  },
+  "homepage": "https://github.com/benhid/rex-orbit#readme",
+  "bugs": "https://github.com/benhid/rex-orbit/issues"
+}

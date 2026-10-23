@@ -1,0 +1,25 @@
+{
+  "render": {
+    "full": {
+      "w": 333,
+      "h": 300,
+      "frames": 480,
+      "sha256": "5666cbe5a1a7195eb6bd6f124d5ab8dfdb0b29969403c86137084f93ead3e696"
+    },
+    "dino": {
+      "w": 160,
+      "h": 120,
+      "frames": 240,
+      "dino": true,
+      "sha256": "63a0badbecdf4d20cce3e0e5418a3a1b511fcef8769b16ba238eedf77610828d"
+    }
+  },
+  "transport": {
+    "mixed": {
+      "frames": 300,
+      "framesSent": 300,
+      "bytes": 5229226,
+      "sha256": "dad707151a0b1cfbd7fc5f6112981f8e7121d3b59cd84499facaaea676804847"
+    }
+  }
+}
