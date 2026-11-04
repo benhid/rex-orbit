@@ -82,6 +82,25 @@ test('rex: scans and events add, update and drop bots', () => {
   assert.deepEqual(store.list.map(a => a.block), ['b2']);
 });
 
+test('rex: finds Claude Code by argv0, since its process is named after its version', () => {
+  const store = new AgentStore();
+  const pane = (block_id, name, argv0, title) => ({ block_id, title: { owner: { name }, title }, process: { foreground: { name, argv0 } }, status: {} });
+  applyScan(store, { sessions: [{ session_id: 's1', blocks: [
+    pane('b1', '2.1.318', 'claude', `${SPIN} Fix login bug`),
+    pane('b2', '2.1.318', '/opt/homebrew/bin/claude', `${IDLE} Write docs`),
+    pane('b3', 'zsh', '-zsh', 'zsh'),
+  ] }] });
+  assert.deepEqual(store.live().map(a => [a.block, a.state]), [['b1', 'work'], ['b2', 'done']]);
+
+  applyEvent(store, blockEvent('title_changed', { owner: { name: '2.1.318' }, title: `${IDLE} Fix login bug` }, 'b1'));
+  assert.equal(store.byBlock.get('b1').state, 'done');
+  assert.equal(applyEvent(store, blockEvent('title_changed', { owner: { name: 'zsh' }, title: 'zsh' }, 'b1')), true);    // quit: rescan
+  assert.equal(store.byBlock.get('b1').name, 'fix-login-bug');
+  assert.equal(applyEvent(store, blockEvent('title_changed', { owner: { name: '2.1.318' }, title: `${SPIN} New` }, 'b9')), true);  // started: rescan
+  assert.equal(applyEvent(store, blockEvent('process_changed', { foreground: { name: '2.1.318', argv0: 'claude' } }, 'b1')), false);
+  assert.equal(applyEvent(store, blockEvent('process_changed', { foreground: { name: 'zsh', argv0: '-zsh' } }, 'b1')), true);
+});
+
 test('ids: unique among bots on screen, dissolving ones included, and reused once they are gone', () => {
   const store = new AgentStore();
   for (const b of ['b0', 'b1', 'b2']) store.upsert('s', b);
