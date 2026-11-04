@@ -20,13 +20,16 @@ const SCAN_LUA = `
 local out = {}
 for _, s in ipairs(rex.call("session.list").sessions or {}) do
   local blocks = {}
-  for _, b in ipairs(rex.call("session.list_blocks", { session_id = s.session_id }).blocks or {}) do
+  -- a script isn't attached to any session, and session calls return nothing until it is
+  rex.session.attach{ session_id = s.session_id }
+  local listed = rex.call("session.list_blocks", { session_id = s.session_id }) or {}
+  for _, b in ipairs(listed.blocks or {}) do
     if b.creator_name == "com.superlogical.terminal" then
       local function m(name)
         local ok, r = pcall(rex.call, "block.method", { session_id = s.session_id, block_id = b.block_id, method = name })
         return ok and r or nil
       end
-      table.insert(blocks, { block_id = b.block_id, title = m("title"), status = m("program_status") })
+      table.insert(blocks, { block_id = b.block_id, title = m("title"), status = m("program_status"), process = m("process") })
     end
   end
   table.insert(out, { session_id = s.session_id, label = s.label, blocks = blocks })
@@ -36,6 +39,11 @@ return { sessions = out }`;
 // our own rex calls show up as client events, so only layout changes trigger a rescan
 const LAYOUT_EVENTS = /^(session_(created|destroyed|label_changed)|block_(created|closed)|window_(created|closed))$/;
 const RESCAN_DELAY = 300, SAFETY_RESCAN = 60000, RECONNECT_DELAY = 2000;   // ms
+
+// Claude Code names its process after its version (2.1.318), so look at argv0 too
+const base = p => (p || '').split('/').pop();
+const VERSIONED = /^\d+\.\d+\.\d+$/;
+export const isClaude = proc => !!proc && (proc.name === 'claude' || base(proc.argv0) === 'claude' || base(proc.invoked_path) === 'claude');
 
 // Lua sends an empty list as {}
 const list = v => Array.isArray(v) ? v : [];
@@ -47,7 +55,7 @@ export function applyScan(store, res) {
   for (const s of list(res.sessions)) {
     store.sessionLabels.set(s.session_id, s.label || s.session_id.slice(-6));
     for (const b of list(s.blocks)) {
-      if (b.title?.owner?.name !== 'claude') continue;
+      if (!isClaude(b.title?.owner) && !isClaude(b.process?.foreground)) continue;
       seen.add(b.block_id);
       const isNew = !store.byBlock.has(b.block_id);
       const a = store.upsert(s.session_id, b.block_id);
@@ -71,12 +79,12 @@ export function applyEvent(store, e) {
   const a = store.byBlock.get(bid);
   switch (name) {
     case 'title_changed':
-      if (pl.owner?.name === 'claude') { store.applyTitle(store.upsert(sid, bid), pl.title); return false; }
-      return !!a;                                                 // maybe claude quit
+      if (isClaude(pl.owner) || (a && VERSIONED.test(pl.owner?.name || ''))) { store.applyTitle(store.upsert(sid, bid), pl.title); return false; }
+      return !!a || VERSIONED.test(pl.owner?.name || '');        // maybe claude quit, or one started (titles only carry the process name)
     case 'desktop_notification': case 'bell': if (a) store.needsYou(a); return false;
     case 'program_status_changed': if (a) store.applyStatus(a, [pl.record || pl].filter(r => r && r.state)); return false;
     case 'program_status_removed': if (a) store.statusRemoved(a); return false;
-    case 'process_changed': return !!a && pl.foreground?.name !== 'claude';
+    case 'process_changed': return a ? !isClaude(pl.foreground) : isClaude(pl.foreground);
     case 'child_exited': if (a) store.drop(bid); return false;
   }
   return false;
