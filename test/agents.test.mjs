@@ -82,6 +82,17 @@ test('rex: scans and events add, update and drop bots', () => {
   assert.deepEqual(store.list.map(a => a.block), ['b2']);
 });
 
+test('rex: panes owned by a version-named Claude Code process are detected', () => {
+  const store = new AgentStore();
+  const pane = (block_id, owner) => ({ block_id, title: { owner: { name: owner }, title: `${SPIN} Fix bug` }, status: { records: {} } });
+  applyScan(store, { sessions: [{ session_id: 's1', blocks: [pane('b1', '2.1.322'), pane('b2', 'zsh'), pane('b3', '2.1.322-beta')] }] });
+  assert.deepEqual(store.live().map(a => a.block), ['b1']);
+  applyEvent(store, blockEvent('title_changed', { owner: { name: '2.1.322' }, title: `${SPIN} New` }, 'b7'));
+  assert.ok(store.byBlock.has('b7'));
+  applyEvent(store, blockEvent('title_changed', { owner: { name: 'zsh' }, title: 'zsh' }, 'b8'));
+  assert.ok(!store.byBlock.has('b8'));
+});
+
 test('ids: unique among bots on screen, dissolving ones included, and reused once they are gone', () => {
   const store = new AgentStore();
   for (const b of ['b0', 'b1', 'b2']) store.upsert('s', b);

@@ -20,7 +20,7 @@ const SCAN_LUA = `
 local out = {}
 for _, s in ipairs(rex.call("session.list").sessions or {}) do
   local blocks = {}
-  for _, b in ipairs(rex.call("session.list_blocks", { session_id = s.session_id }).blocks or {}) do
+  for _, b in ipairs((rex.call("session.list_blocks", { session_id = s.session_id }) or {}).blocks or {}) do
     if b.creator_name == "com.superlogical.terminal" then
       local function m(name)
         local ok, r = pcall(rex.call, "block.method", { session_id = s.session_id, block_id = b.block_id, method = name })
