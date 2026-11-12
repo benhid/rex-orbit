@@ -20,7 +20,7 @@ const SCAN_LUA = `
 local out = {}
 for _, s in ipairs(rex.call("session.list").sessions or {}) do
   local blocks = {}
-  for _, b in ipairs(rex.call("session.list_blocks", { session_id = s.session_id }).blocks or {}) do
+  for _, b in ipairs((rex.call("session.list_blocks", { session_id = s.session_id }) or {}).blocks or {}) do
     if b.creator_name == "com.superlogical.terminal" then
       local function m(name)
         local ok, r = pcall(rex.call, "block.method", { session_id = s.session_id, block_id = b.block_id, method = name })
@@ -38,6 +38,9 @@ const LAYOUT_EVENTS = /^(session_(created|destroyed|label_changed)|block_(create
 const RESCAN_DELAY = 300, SAFETY_RESCAN = 60000, RECONNECT_DELAY = 2000;   // ms
 
 // Lua sends an empty list as {}
+// Newer Claude Code names its process after its version (e.g. "2.1.322").
+const isClaude = owner => /^(claude|\d+\.\d+\.\d+)$/.test(owner?.name || '');
+
 const list = v => Array.isArray(v) ? v : [];
 
 export function applyScan(store, res) {
@@ -47,7 +50,7 @@ export function applyScan(store, res) {
   for (const s of list(res.sessions)) {
     store.sessionLabels.set(s.session_id, s.label || s.session_id.slice(-6));
     for (const b of list(s.blocks)) {
-      if (b.title?.owner?.name !== 'claude') continue;
+      if (!isClaude(b.title?.owner)) continue;
       seen.add(b.block_id);
       const isNew = !store.byBlock.has(b.block_id);
       const a = store.upsert(s.session_id, b.block_id);
@@ -71,7 +74,7 @@ export function applyEvent(store, e) {
   const a = store.byBlock.get(bid);
   switch (name) {
     case 'title_changed':
-      if (pl.owner?.name === 'claude') { store.applyTitle(store.upsert(sid, bid), pl.title); return false; }
+      if (isClaude(pl.owner)) { store.applyTitle(store.upsert(sid, bid), pl.title); return false; }
       return !!a;                                                 // maybe claude quit
     case 'desktop_notification': case 'bell': if (a) store.needsYou(a); return false;
     case 'program_status_changed': if (a) store.applyStatus(a, [pl.record || pl].filter(r => r && r.state)); return false;
